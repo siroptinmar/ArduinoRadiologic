@@ -12,10 +12,10 @@
 EthernetUDP Udp;
 
 //the Arduino's IP
-IPAddress ip(192, 168, 1, 102);
+IPAddress ip(192, 168, 0, 102);
 
 //destination IP
-IPAddress outIp(192, 168, 1, 101);
+IPAddress outIp(192, 168, 0, 101);
 
 //ports numbers
 const unsigned int inPort = 12347; /// from Rasp <- Python
@@ -23,35 +23,62 @@ const unsigned int outPort = 12344; ///to Rasp -> Python
 
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // you can find this written on the board of some Arduino Ethernets or shields
 
-int ledPin = 4;
+int ledPin = 13;
 int button1 = 3; 
 int val = 0;
 int oldVal = 0;
-int tag = 0;
+int tag = 1;
 OSCErrorCode error;
 
 ///control the Led from OSC
 void led (OSCMessage &m){
     if (m.getInt(0) == 0){
-      digitalWrite(ledPin, HIGH);
-      tag = 0;
+      //digitalWrite(ledPin, HIGH);
+      Serial.print("veille");
+      tag = 1;
     }
     else {
-      digitalWrite(ledPin, LOW);
-      tag = 1;
+      //digitalWrite(ledPin, LOW);
+      Serial.print("démarré");
+      tag = 0;
     }
 }
 
 void setup() {
     Ethernet.begin(mac,ip);
     Udp.begin(inPort);
-    //Serial.begin(115200);
+    Serial.begin(115200);
     pinMode(3,INPUT_PULLUP);
-    pinMode(4,OUTPUT);
+    pinMode(ledPin,OUTPUT);
 }
 
 
 void loop(){
+
+    /// gestion bouton/led envoie OSC vers rasp
+    
+    val = digitalRead(button1); ///val = 1 par default
+    //Serial.print(val);
+    if (val !=oldVal){
+      if (val == 0){
+        if( tag == 0){ ///si c'est eteint: j'allume
+          sendService();
+          Serial.print("Allumé");
+          digitalWrite(ledPin, LOW);
+          tag = 1;
+        }
+        else if (tag==1){ ///si c'est allumé: j'éteins
+          sendOff();
+          Serial.print("Eteind");
+          digitalWrite(ledPin, HIGH);
+          tag = 0;
+        }
+      }
+      else if (val == 1){
+        /// si je relache le bouton : rien
+      }
+    }
+    oldVal = val; 
 
     /// dispatch OSC IN
     
@@ -69,29 +96,6 @@ void loop(){
         //Serial.println(error);
       }
     }
-  
-   
-    /// gestion bouton/led envoie OSC vers rasp
-    
-    val = digitalRead(button1); ///val = 1 par default
-    if (val !=oldVal){
-      if (val == 0){
-        if( tag ==0){ ///si c'est eteint: j'allume
-          sendService();
-          digitalWrite(ledPin, LOW);
-          tag = 1;
-        }
-        else if (tag==1){ ///si c'est allumé: j'éteins
-          sendOff();
-          digitalWrite(ledPin, HIGH);
-          tag = 0;
-        }
-      }
-      else if (val == 1){
-        /// si je relache le bouton : rien
-      }
-    }
-    oldVal = val; 
     
 }
 
